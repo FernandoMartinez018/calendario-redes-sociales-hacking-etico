@@ -1,0 +1,76 @@
+import express from "express";
+import path from "path";
+import { createServer as createViteServer } from "vite";
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import * as dotenv from 'dotenv';
+
+// Load env before anything else
+dotenv.config();
+
+import authRoutes from './src/server/routes/auth.ts';
+import postRoutes from './src/server/routes/posts.ts';
+import aiRoutes from './src/server/routes/ai.ts';
+import metricRoutes from './src/server/routes/metrics.ts';
+import campaignRoutes from './src/server/routes/campaigns.ts';
+import uploadRoutes from './src/server/routes/uploads.ts';
+import { errorHandler } from './src/server/middlewares/errorHandler.ts';
+import { initScheduler } from './src/server/scheduler.ts';
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  // Security Middlewares
+  app.use(helmet({
+    contentSecurityPolicy: false, // Vite handles this in dev
+  }));
+  app.use(cors());
+  app.use(express.json());
+
+  // Rate limiting
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+  });
+  app.use('/api/', limiter);
+
+  // API Routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/posts', postRoutes);
+  app.use('/api/ai', aiRoutes);
+  app.use('/api/metrics', metricRoutes);
+  app.use('/api/campaigns', campaignRoutes);
+  app.use('/api/uploads', uploadRoutes);
+
+  // Health check
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", version: "1.0.0", timestamp: new Date() });
+  });
+
+  // Global Error Handler
+  app.use(errorHandler);
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 MotoSocial Monolith running on http://localhost:${PORT}`);
+    initScheduler();
+  });
+}
+
+startServer();
