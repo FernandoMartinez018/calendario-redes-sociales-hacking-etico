@@ -1,6 +1,6 @@
 import cron from 'node-cron';
-import { db } from '../db/index.ts';
-import { contentPosts } from '../db/schema.ts';
+import { db } from '../db/index';
+import { contentPosts } from '../db/schema';
 import { and, eq, lte } from 'drizzle-orm';
 
 export const initScheduler = () => {

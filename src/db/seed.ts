@@ -1,4 +1,4 @@
-import { db } from './index.ts';
+import { db } from './index';
 import { 
   users, 
   socialAccounts, 
@@ -7,7 +7,7 @@ import {
   metricsSnapshots, 
   mediaAssets, 
   promptTemplates 
-} from './schema.ts';
+} from './schema';
 import bcrypt from 'bcryptjs';
 
 async function seed() {

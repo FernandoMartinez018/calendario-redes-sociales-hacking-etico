@@ -4,7 +4,7 @@ import pkg from 'pg';
 
 const { Pool } = pkg;
 
-import * as schema from './schema.ts';
+import * as schema from './schema';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { db } from '../../db/index.ts';
-import { contentPosts } from '../../db/schema.ts';
+import { db } from '../../db/index';
+import { contentPosts } from '../../db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 const router = Router();

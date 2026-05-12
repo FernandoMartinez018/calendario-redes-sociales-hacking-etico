@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import { authMiddleware, AuthRequest } from '../middlewares/auth.ts';
-import { db } from '../../db/index.ts';
-import { mediaAssets } from '../../db/schema.ts';
+import { authMiddleware, AuthRequest } from '../middlewares/auth';
+import { db } from '../../db/index';
+import { mediaAssets } from '../../db/schema';
 
 const router = Router();
 const upload = multer({ dest: 'uploads/' });
