@@ -9,14 +9,14 @@ import * as dotenv from 'dotenv';
 // Load env before anything else
 dotenv.config();
 
-import authRoutes from './src/server/routes/auth';
-import postRoutes from './src/server/routes/posts';
-import aiRoutes from './src/server/routes/ai';
-import metricRoutes from './src/server/routes/metrics';
-import campaignRoutes from './src/server/routes/campaigns';
-import uploadRoutes from './src/server/routes/uploads';
-import { errorHandler } from './src/server/middlewares/errorHandler';
-import { initScheduler } from './src/server/scheduler';
+import authRoutes from './src/server/routes/auth.js';
+import postRoutes from './src/server/routes/posts.js';
+import aiRoutes from './src/server/routes/ai.js';
+import metricRoutes from './src/server/routes/metrics.js';
+import campaignRoutes from './src/server/routes/campaigns.js';
+import uploadRoutes from './src/server/routes/uploads.js';
+import { errorHandler } from './src/server/middlewares/errorHandler.js';
+import { initScheduler } from './src/server/scheduler.js';
 
 async function startServer() {
   const app = express();

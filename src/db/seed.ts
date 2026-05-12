@@ -1,4 +1,4 @@
-import { db } from './index';
+import { db } from './index.js';
 import { 
   users, 
   socialAccounts, 
@@ -7,7 +7,7 @@ import {
   metricsSnapshots, 
   mediaAssets, 
   promptTemplates 
-} from './schema';
+} from './schema.js';
 import bcrypt from 'bcryptjs';
 
 async function seed() {
