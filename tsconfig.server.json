@@ -9,9 +9,5 @@
     "skipLibCheck": true,
     "strict": false
   },
-  "include": [
-    "server.ts",
-    "src/server",
-    "src/db"
-  ]
+  "include": ["server.ts", "src/server/**/*"]
 }
