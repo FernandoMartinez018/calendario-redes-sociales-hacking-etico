@@ -43,20 +43,3 @@ export function sendWelcomeEmailJS(toEmail: string, name: string): Promise<boole
     message: `Hola ${name || ''}, tu cuenta en MotoSocial fue creada con éxito. Ya puedes generar contenido con IA y planificar tu calendario.`,
   });
 }
-
-// Recordatorio: una publicación se publica en ~1 hora
-export function sendReminderEmailJS(
-  toEmail: string,
-  d: { copy: string; platform: string; fecha: string; hora: string }
-): Promise<boolean> {
-  return send(ENV.VITE_EMAILJS_REMINDER_TEMPLATE_ID, {
-    to_email: toEmail,
-    email: toEmail,
-    subject: '⏰ Tu publicación sale en 1 hora — MotoSocial',
-    red: d.platform,
-    fecha: d.fecha,
-    hora: d.hora,
-    post: d.copy,
-    message: `Recordatorio: tu publicación en ${d.platform} se publica el ${d.fecha} a las ${d.hora}. "${d.copy}"`,
-  });
-}

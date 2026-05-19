@@ -11,6 +11,7 @@ import {
   Youtube,
   Loader2,
   BarChart3,
+  Sparkles,
 } from 'lucide-react';
 import {
   format,
@@ -78,6 +79,21 @@ export default function Dashboard() {
     })();
   }, []);
 
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null);
+
+  const analyze = async () => {
+    setAnalyzing(true);
+    try {
+      const { data } = await api.post('/api/ai/analyze-performance', {});
+      setAnalysis(data);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'No se pudo generar el análisis.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const now = new Date();
   const drafts = posts.filter((p) => p.status === 'DRAFT');
   const scheduled = posts.filter((p) => p.status === 'SCHEDULED' && p.scheduledAt);
@@ -127,6 +143,71 @@ export default function Dashboard() {
         <StatCard label="Programados" value={scheduled.length} icon={Clock} color="text-orange-500" />
         <StatCard label="Próx. 7 días" value={next7.length} icon={CalendarDays} color="text-blue-400" />
         <StatCard label="Publicados" value={published.length} icon={CheckCircle2} color="text-emerald-500" />
+      </div>
+
+      {/* Análisis IA de rendimiento */}
+      <div className="bg-zinc-950 border border-zinc-800/60 rounded-3xl p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-500">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Análisis IA de rendimiento</h3>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                Qué ha funcionado mejor y qué seguir haciendo
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={analyze}
+            disabled={analyzing}
+            className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 transition-colors disabled:opacity-50 shrink-0"
+          >
+            {analyzing ? <Loader2 className="animate-spin" size={15} /> : <Sparkles size={15} />}
+            {analysis ? 'Re-analizar' : 'Analizar'}
+          </button>
+        </div>
+        {analysis ? (
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-900/40 border border-zinc-800 rounded-xl p-4">
+              {analysis.resumen}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">
+                  Lo que funciona
+                </p>
+                <ul className="space-y-1.5">
+                  {(analysis.loMejor || []).map((s: string, i: number) => (
+                    <li key={i} className="text-xs text-zinc-300 flex gap-2">
+                      <span className="text-emerald-500 shrink-0">▲</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-2">
+                  Recomendaciones
+                </p>
+                <ul className="space-y-1.5">
+                  {(analysis.recomendaciones || []).map((s: string, i: number) => (
+                    <li key={i} className="text-xs text-zinc-300 flex gap-2">
+                      <span className="text-orange-500 shrink-0">→</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-600">
+            Pulsa "Analizar" y la IA revisa tus métricas reales para decirte qué está rindiendo mejor y
+            qué deberías seguir haciendo por su impacto.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

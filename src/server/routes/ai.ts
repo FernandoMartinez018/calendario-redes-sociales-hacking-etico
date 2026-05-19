@@ -3,6 +3,9 @@ import OpenAI from 'openai';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 import { getStoreContext } from '../lib/storeContext.js';
 import { getBestSlots, DEFAULT_WEEKDAY } from '../lib/scheduling.js';
+import { db } from '../../db/index.js';
+import { metricsSnapshots, contentPosts } from '../../db/schema.js';
+import { eq, desc } from 'drizzle-orm';
 
 const router = Router();
 
@@ -473,6 +476,96 @@ Devuelve estrictamente este JSON:
         metaDescription: typeof s.metaDescription === 'string' ? s.metaDescription : '',
         keywords: arr(s.keywords),
       },
+    });
+  } catch (error: any) {
+    return mapGroqError(error, res);
+  }
+});
+
+/* ───────────────────────── Análisis IA de rendimiento (Dashboard) ───────────────────────── */
+
+router.post('/analyze-performance', authMiddleware, async (req: AuthRequest, res) => {
+  const userId = req.user!.userId;
+
+  const groq = groqClient();
+  if (!groq) {
+    return res.status(400).json({ error: 'GROQ_API_KEY no configurada. Agrégala a tu archivo .env.' });
+  }
+
+  try {
+    const rows = await db
+      .select({ snap: metricsSnapshots, post: contentPosts })
+      .from(metricsSnapshots)
+      .innerJoin(contentPosts, eq(metricsSnapshots.postId, contentPosts.id))
+      .where(eq(contentPosts.userId, userId))
+      .orderBy(desc(metricsSnapshots.recordedAt))
+      .limit(300);
+
+    const latest: Record<string, any> = {};
+    for (const r of rows) if (!latest[r.post.id]) latest[r.post.id] = r;
+    const items = Object.values(latest) as any[];
+
+    if (items.length === 0) {
+      return res.json({
+        resumen: 'Aún no hay métricas registradas. Registra métricas en Publicaciones para obtener un análisis.',
+        loMejor: [],
+        recomendaciones: [],
+      });
+    }
+
+    const agg = (keyFn: (x: any) => any) => {
+      const g: Record<string, number[]> = {};
+      for (const it of items) {
+        const k = keyFn(it);
+        if (!k) continue;
+        (g[k] ||= []).push(parseFloat(it.snap.engagement) || 0);
+      }
+      return Object.entries(g)
+        .map(([k, a]) => `${k}: ${(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2)}% (${a.length})`)
+        .join(', ');
+    };
+
+    let storeContext = '';
+    try {
+      storeContext = await getStoreContext(userId);
+    } catch {
+      /* ignore */
+    }
+
+    const userPrompt = `${storeContext ? storeContext + '\n\n' : ''}Analiza el rendimiento GENERAL del contenido de esta tienda de motos (${items.length} publicaciones con métricas).
+Engagement promedio por red: ${agg((x) => x.post.platform)}.
+Por formato: ${agg((x) => x.post.type)}.
+Por pilar de contenido: ${agg((x) => x.post.pillar)}.
+
+Da un análisis GENERAL y estratégico: habla por PATRONES (qué tipos de contenido, redes y pilares funcionan mejor en conjunto). NO menciones publicaciones individuales, nombres propios ni cifras exactas; resúmelo en tendencias y consejos amplios.
+Devuelve estrictamente este JSON en español:
+{"resumen":"2-3 frases con la conclusión general","loMejor":["tendencias que funcionan, en general (3-5 puntos)"],"recomendaciones":["qué seguir haciendo, recomendaciones generales y accionables (3-5 puntos)"]}`;
+
+    const completion = await groq.chat.completions.create({
+      model: MODEL(),
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.6,
+    });
+
+    const text = completion.choices[0]?.message?.content;
+    if (!text) return res.status(502).json({ error: 'La IA no devolvió análisis. Intenta de nuevo.' });
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return res.status(502).json({ error: 'La IA devolvió un formato inválido. Intenta de nuevo.' });
+    }
+
+    const arr = (v: any): string[] => (Array.isArray(v) ? v.map((x) => String(x)) : []);
+    return res.json({
+      resumen: typeof parsed?.resumen === 'string' ? parsed.resumen : '',
+      loMejor: arr(parsed?.loMejor),
+      recomendaciones: arr(parsed?.recomendaciones),
     });
   } catch (error: any) {
     return mapGroqError(error, res);

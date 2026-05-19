@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
+import api from './lib/api.js';
+import Onboarding from './components/Onboarding.tsx';
 import MainLayout from './layouts/MainLayout.tsx';
 import Dashboard from './components/Dashboard.tsx';
 import CalendarView from './components/CalendarView.tsx';
@@ -31,6 +33,22 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const { user, loading } = useAuth();
+  const [profileState, setProfileState] = useState<'checking' | 'needed' | 'ok'>('checking');
+
+  useEffect(() => {
+    if (!user) {
+      setProfileState('checking');
+      return;
+    }
+    let active = true;
+    api
+      .get('/api/store-profile')
+      .then(({ data }) => active && setProfileState(data ? 'ok' : 'needed'))
+      .catch(() => active && setProfileState('ok')); // si falla, no bloquear el acceso
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   if (loading) {
     return (
@@ -45,6 +63,18 @@ function AppContent() {
 
   if (!user) {
     return <AuthView onLogin={() => {}} />; // useAuth handles the user state
+  }
+
+  if (profileState === 'checking') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-950 text-white">
+        <div className="w-10 h-10 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (profileState === 'needed') {
+    return <Onboarding onDone={() => setProfileState('ok')} />;
   }
 
   const renderContent = () => {

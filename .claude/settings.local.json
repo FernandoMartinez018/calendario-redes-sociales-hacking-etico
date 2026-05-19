@@ -11,7 +11,8 @@
       "Bash(grep -rn \"shadcn\" src/ index.html)",
       "Bash(grep -rn \"jwt-decode\" --include=\"*.ts\" --include=\"*.tsx\" src/ server.ts)",
       "Bash(grep -rn \"mailer\" src/ server.ts)",
-      "Bash(rm -f src/server/lib/mailer.ts)"
+      "Bash(rm -f src/server/lib/mailer.ts)",
+      "Bash(grep -n \"analyze-performance\\\\|const top =\\\\|const userPrompt = \\\\`\\\\${storeContext ? storeContext + '..\\\\|Analiza el rendimiento\\\\|Top publicaciones\\\\|loMejor\" src/server/routes/ai.ts)"
     ]
   }
 }

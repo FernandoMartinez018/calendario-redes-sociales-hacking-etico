@@ -3,7 +3,7 @@ import api from '../lib/api.js';
 import { LogIn, UserPlus, Bike, ArrowRight, KeyRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
-import { sendResetEmailJS } from '../lib/emailjs.js';
+import { sendResetEmailJS, sendWelcomeEmailJS } from '../lib/emailjs.js';
 
 export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) {
   const { login } = useAuth();
@@ -93,6 +93,14 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
       }
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const { data } = await api.post(endpoint, { email, password, name, dealerName });
+      if (!isLogin) {
+        // Registro exitoso → correo de bienvenida (best-effort, no bloquea).
+        try {
+          await sendWelcomeEmailJS(email, name);
+        } catch {
+          /* ignorar */
+        }
+      }
       login(data.token, data.user);
       onLogin(data.user);
     } catch (err: any) {

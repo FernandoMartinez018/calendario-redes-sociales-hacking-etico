@@ -41,7 +41,6 @@ export const contentPosts = pgTable('content_posts', {
   mediaUrl: text('media_url'),
   postUrl: text('post_url'), // URL pública de la publicación ya posteada
   pillar: text('pillar'), // Pilar de contenido (para analítica)
-  reminderSent: integer('reminder_sent').default(0).notNull(), // 1 = recordatorio 1h enviado
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
