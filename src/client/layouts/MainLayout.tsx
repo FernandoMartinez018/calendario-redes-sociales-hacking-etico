@@ -1,7 +1,6 @@
 import React from 'react';
 import Sidebar from '../components/Sidebar.tsx';
 import { useAuth } from '../contexts/AuthContext.tsx';
-import { Toaster } from '../components/ui/sonner.tsx';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,7 +14,7 @@ export default function MainLayout({ children, activeTab, setActiveTab }: Layout
   if (!user) return <>{children}</>;
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-orange-500/30 overflow-hidden">
+    <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-orange-500/30 overflow-hidden text-white">
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -32,7 +31,6 @@ export default function MainLayout({ children, activeTab, setActiveTab }: Layout
         <div className="absolute top-0 right-0 -z-10 w-full max-w-[600px] h-full max-h-[600px] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none translate-x-1/4 -translate-y-1/4" />
         <div className="absolute bottom-0 left-0 -z-10 w-full max-w-[500px] h-full max-h-[500px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none -translate-x-1/4 translate-y-1/4" />
       </main>
-      <Toaster richColors closeButton theme="dark" position="top-right" />
     </div>
   );
 }

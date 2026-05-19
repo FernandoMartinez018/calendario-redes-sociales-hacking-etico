@@ -44,4 +44,30 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/supabase-sync', async (req, res) => {
+  try {
+    const { email, name, picture } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    // Check if user exists
+    let [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    
+    if (!user) {
+      // Create user if doesn't exist
+      [user] = await db.insert(users).values({
+        email,
+        name: name || 'User',
+        password: await bcrypt.hash(Math.random().toString(36), 10),
+        dealerName: 'Nuevo Concesionario',
+      }).returning();
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, dealerName: user.dealerName, logoUrl: picture } });
+  } catch (error) {
+    console.error('Supabase Sync Error:', error);
+    res.status(500).json({ error: 'Authentication sync failed' });
+  }
+});
+
 export default router;

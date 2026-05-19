@@ -34,9 +34,10 @@ export const contentPosts = pgTable('content_posts', {
   scheduledAt: timestamp('scheduled_at'),
   publishedAt: timestamp('published_at'),
   userId: uuid('user_id').references(() => users.id).notNull(),
-  socialAccountId: uuid('social_account_id').references(() => socialAccounts.id).notNull(),
+  socialAccountId: uuid('social_account_id').references(() => socialAccounts.id),
   campaignId: uuid('campaign_id'), // Will be linked if needed
   aiPromptUsed: text('ai_prompt_used'),
+  mediaUrl: text('media_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

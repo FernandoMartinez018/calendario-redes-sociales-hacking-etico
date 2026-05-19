@@ -4,11 +4,16 @@ import MainLayout from './layouts/MainLayout.tsx';
 import Dashboard from './components/Dashboard.tsx';
 import CalendarView from './components/CalendarView.tsx';
 import AIGenerator from './components/AIGenerator.tsx';
+import AdsView from './components/AdsView.tsx';
+import MetricsView from './components/MetricsView.tsx';
+import SettingsView from './components/SettingsView.tsx';
 import AuthView from './components/AuthView.tsx';
+import PostModal from './components/PostModal.tsx';
 import { PlusCircle } from 'lucide-react';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -31,6 +36,9 @@ function AppContent() {
       case 'dashboard': return <Dashboard />;
       case 'calendar': return <CalendarView />;
       case 'ai': return <AIGenerator />;
+      case 'ads': return <AdsView />;
+      case 'analytics': return <MetricsView />;
+      case 'settings': return <SettingsView />;
       default: return (
         <div className="flex h-[60vh] items-center justify-center text-zinc-500 border border-zinc-800 border-dashed rounded-3xl">
           Módulo "{activeTab}" en desarrollo
@@ -51,7 +59,10 @@ function AppContent() {
           </p>
         </div>
         <div className="flex gap-4">
-          <button className="group relative flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-xl shadow-orange-900/20 hover:scale-[1.02] active:scale-[0.98]">
+          <button 
+            onClick={() => setIsPostModalOpen(true)}
+            className="group relative flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-xl shadow-orange-900/20 hover:scale-[1.02] active:scale-[0.98]"
+          >
             <PlusCircle size={20} className="group-hover:rotate-90 transition-transform duration-300" />
             <span>Nueva Publicación</span>
             <div className="absolute inset-0 rounded-xl bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -60,6 +71,11 @@ function AppContent() {
       </header>
 
       {renderContent()}
+
+      <PostModal 
+        isOpen={isPostModalOpen} 
+        onClose={() => setIsPostModalOpen(false)} 
+      />
     </MainLayout>
   );
 }

@@ -15,6 +15,7 @@ import aiRoutes from './src/server/routes/ai.js';
 import metricRoutes from './src/server/routes/metrics.js';
 import campaignRoutes from './src/server/routes/campaigns.js';
 import uploadRoutes from './src/server/routes/uploads.js';
+import settingsRoutes from './src/server/routes/settings.js';
 import { errorHandler } from './src/server/middlewares/errorHandler.js';
 import { initScheduler } from './src/server/scheduler.js';
 
@@ -43,6 +44,7 @@ async function startServer() {
   app.use('/api/metrics', metricRoutes);
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/uploads', uploadRoutes);
+  app.use('/api/settings', settingsRoutes);
 
   // Health check
   app.get("/api/health", (req, res) => {

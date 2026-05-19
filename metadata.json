@@ -2,5 +2,5 @@
   "name": "MotoSocial SaaS",
   "description": "Plataforma monolithic de gestión de redes sociales para concesionarios de motos, con IA integrada y calendario de contenidos.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
