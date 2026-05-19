@@ -7,7 +7,9 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Target
+  Wand2,
+  FileText,
+  Megaphone
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,9 +23,11 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }: Sid
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'calendar', label: 'Calendario', icon: CalendarIcon },
-    { id: 'ai', label: 'Generador IA', icon: Sparkles },
+    { id: 'posts', label: 'Publicaciones', icon: FileText },
+    { id: 'assistant', label: 'Asistente IA', icon: Wand2 },
+    { id: 'ai', label: 'Post rápido', icon: Sparkles },
+    { id: 'seo', label: 'Slogans & SEO', icon: Megaphone },
     { id: 'media', label: 'Multimedia', icon: ImageIcon },
-    { id: 'ads', label: 'Campañas Ads', icon: Target },
     { id: 'analytics', label: 'Métricas', icon: BarChart3 },
     { id: 'settings', label: 'Configuración', icon: Settings },
   ];

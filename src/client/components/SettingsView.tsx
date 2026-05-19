@@ -15,7 +15,8 @@ import {
   Instagram,
   Facebook,
   Twitter,
-  Youtube
+  Youtube,
+  Store
 } from 'lucide-react';
 import api from '../lib/api.js';
 import { useAuth } from '../contexts/AuthContext.tsx';
@@ -23,12 +24,25 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function SettingsView() {
   const { user, logout, updateUser } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'social' | 'security'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'store' | 'social' | 'security'>('profile');
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     dealerName: user?.dealerName || '',
     email: user?.email || '',
   });
+  const emptyStore = {
+    brands: '',
+    motoTypes: '',
+    targetAudience: '',
+    city: '',
+    brandTone: '',
+    valueProposition: '',
+    activePromotions: '',
+    season: '',
+  };
+  const [storeData, setStoreData] = useState<typeof emptyStore>(emptyStore);
+  const [loadingStore, setLoadingStore] = useState(false);
+  const [savingStore, setSavingStore] = useState(false);
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
@@ -38,7 +52,47 @@ export default function SettingsView() {
     if (activeSubTab === 'social') {
       fetchSocialAccounts();
     }
+    if (activeSubTab === 'store') {
+      fetchStoreProfile();
+    }
   }, [activeSubTab]);
+
+  const fetchStoreProfile = async () => {
+    setLoadingStore(true);
+    try {
+      const { data } = await api.get('/api/store-profile');
+      if (data) {
+        setStoreData({
+          brands: data.brands || '',
+          motoTypes: data.motoTypes || '',
+          targetAudience: data.targetAudience || '',
+          city: data.city || '',
+          brandTone: data.brandTone || '',
+          valueProposition: data.valueProposition || '',
+          activePromotions: data.activePromotions || '',
+          season: data.season || '',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingStore(false);
+    }
+  };
+
+  const handleSaveStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingStore(true);
+    setMessage(null);
+    try {
+      await api.post('/api/store-profile', storeData);
+      setMessage({ type: 'success', text: 'Perfil de tienda guardado correctamente' });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Error al guardar el perfil de tienda' });
+    } finally {
+      setSavingStore(false);
+    }
+  };
 
   const fetchSocialAccounts = async () => {
     setLoadingAccounts(true);
@@ -98,6 +152,7 @@ export default function SettingsView() {
 
   const menuItems = [
     { id: 'profile', label: 'Mi Perfil', icon: User },
+    { id: 'store', label: 'Perfil de Tienda', icon: Store },
     { id: 'social', label: 'Cuentas Vinculadas', icon: Link2 },
     { id: 'security', label: 'Seguridad', icon: Shield },
   ];
@@ -288,6 +343,129 @@ export default function SettingsView() {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {activeSubTab === 'store' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-black uppercase text-zinc-400">Perfil de Tienda</h3>
+                    <p className="text-[10px] text-zinc-600 font-bold uppercase mb-6 tracking-widest italic">
+                      Este contexto alimenta a la IA: mientras más completo, mejores ideas y copies
+                    </p>
+                  </div>
+
+                  {loadingStore ? (
+                    <div className="py-10 flex justify-center">
+                      <Loader2 className="text-orange-500 animate-spin" />
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSaveStore} className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Marcas que vendes</label>
+                          <input
+                            type="text"
+                            value={storeData.brands}
+                            onChange={(e) => setStoreData({ ...storeData, brands: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            placeholder="Yamaha, Honda, Bajaj..."
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Tipos de moto</label>
+                          <input
+                            type="text"
+                            value={storeData.motoTypes}
+                            onChange={(e) => setStoreData({ ...storeData, motoTypes: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            placeholder="Deportiva, scooter, trabajo, aventura"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Ciudad / zona</label>
+                          <input
+                            type="text"
+                            value={storeData.city}
+                            onChange={(e) => setStoreData({ ...storeData, city: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            placeholder="Bogotá, Colombia"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Tono de marca</label>
+                          <input
+                            type="text"
+                            value={storeData.brandTone}
+                            onChange={(e) => setStoreData({ ...storeData, brandTone: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            placeholder="Cercano, aventurero, técnico..."
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Público objetivo</label>
+                        <textarea
+                          value={storeData.targetAudience}
+                          onChange={(e) => setStoreData({ ...storeData, targetAudience: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm min-h-[70px] resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                          placeholder="Jóvenes 20-35 que buscan su primera moto, motociclistas de aventura..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Qué te diferencia (propuesta de valor)</label>
+                        <textarea
+                          value={storeData.valueProposition}
+                          onChange={(e) => setStoreData({ ...storeData, valueProposition: e.target.value })}
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm min-h-[70px] resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                          placeholder="Taller propio, financiación sin cuota inicial, garantía extendida..."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Promociones vigentes</label>
+                          <textarea
+                            value={storeData.activePromotions}
+                            onChange={(e) => setStoreData({ ...storeData, activePromotions: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            placeholder="Casco gratis en la compra, 0% interés a 12 meses..."
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-2 block">Temporada / contexto actual</label>
+                          <textarea
+                            value={storeData.season}
+                            onChange={(e) => setStoreData({ ...storeData, season: e.target.value })}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                            placeholder="Temporada de lluvias, fin de año, regreso a clases..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        {message && (
+                          <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${
+                            message.type === 'success' ? 'text-emerald-500' : 'text-rose-500'
+                          }`}>
+                            {message.type === 'success' && <CheckCircle2 size={14} />}
+                            {message.text}
+                          </div>
+                        )}
+                        <div className="flex-1" />
+                        <button
+                          type="submit"
+                          disabled={savingStore}
+                          className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-orange-900/20 disabled:opacity-50"
+                        >
+                          {savingStore ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                          Guardar Perfil
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               )}
 

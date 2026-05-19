@@ -3,8 +3,14 @@ import { db } from '../db/index.js';
 import { contentPosts } from '../db/schema.js';
 import { and, eq, lte } from 'drizzle-orm';
 
+/**
+ * NOTA: la publicación es SIMULADA. Las APIs oficiales de redes (Meta, TikTok,
+ * X) requieren aprobación de negocio o planes de pago, fuera del alcance del
+ * proyecto. Este cron solo marca en la BD los posts SCHEDULED vencidos como
+ * PUBLISHED; NO postea a ninguna red real.
+ */
 export const initScheduler = () => {
-  console.log('📅 Initializing Backend Scheduler...');
+  console.log('📅 Initializing Backend Scheduler (publicación SIMULADA)...');
 
   // 1. Post Publisher: Every minute
   cron.schedule('* * * * *', async () => {

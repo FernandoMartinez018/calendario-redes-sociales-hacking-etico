@@ -16,6 +16,7 @@ import metricRoutes from './src/server/routes/metrics.js';
 import campaignRoutes from './src/server/routes/campaigns.js';
 import uploadRoutes from './src/server/routes/uploads.js';
 import settingsRoutes from './src/server/routes/settings.js';
+import storeProfileRoutes from './src/server/routes/storeProfile.js';
 import { errorHandler } from './src/server/middlewares/errorHandler.js';
 import { initScheduler } from './src/server/scheduler.js';
 
@@ -33,7 +34,7 @@ async function startServer() {
   // Rate limiting
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    max: 2000 // amplio para desarrollo/uso normal
   });
   app.use('/api/', limiter);
 
@@ -45,6 +46,7 @@ async function startServer() {
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/uploads', uploadRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/store-profile', storeProfileRoutes);
 
   // Health check
   app.get("/api/health", (req, res) => {

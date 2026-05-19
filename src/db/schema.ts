@@ -28,6 +28,7 @@ export const socialAccounts = pgTable('social_accounts', {
 export const contentPosts = pgTable('content_posts', {
   id: uuid('id').defaultRandom().primaryKey(),
   type: text('type').notNull(), // REEL, STORY, POST, SHORT
+  platform: text('platform'), // INSTAGRAM, TIKTOK, FACEBOOK, X, YOUTUBE
   copy: text('copy').notNull(),
   hashtags: text('hashtags'),
   status: postStatusEnum('status').default('DRAFT').notNull(),
@@ -38,6 +39,8 @@ export const contentPosts = pgTable('content_posts', {
   campaignId: uuid('campaign_id'), // Will be linked if needed
   aiPromptUsed: text('ai_prompt_used'),
   mediaUrl: text('media_url'),
+  postUrl: text('post_url'), // URL pública de la publicación ya posteada
+  pillar: text('pillar'), // Pilar de contenido (para analítica)
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -88,4 +91,20 @@ export const promptTemplates = pgTable('prompt_templates', {
   content: text('content').notNull(),
   category: text('category').notNull(), // Adventure, Technical, Sales
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Perfil de marketing de la tienda: contexto que alimenta toda la generación de IA.
+export const storeProfiles = pgTable('store_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull().unique(),
+  brands: text('brands'),                       // Marcas que vende: Yamaha, Honda, Bajaj...
+  motoTypes: text('moto_types'),                // Deportiva, scooter, trabajo, aventura
+  targetAudience: text('target_audience'),      // Público objetivo
+  city: text('city'),                           // Ciudad / zona (para SEO local)
+  brandTone: text('brand_tone'),                // Tono de marca
+  valueProposition: text('value_proposition'),  // Qué la diferencia
+  activePromotions: text('active_promotions'),  // Promos vigentes
+  season: text('season'),                       // Temporada / contexto actual
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

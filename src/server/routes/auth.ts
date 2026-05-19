@@ -6,7 +6,7 @@ import { users } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'motosocial-secret-key-fija-2026';
 
 router.post('/register', async (req, res) => {
   try {

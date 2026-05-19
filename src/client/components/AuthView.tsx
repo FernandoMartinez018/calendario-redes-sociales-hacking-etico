@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api.js';
 import { LogIn, UserPlus, Bike, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.tsx';
-import { supabase } from '../lib/supabase.js';
+import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
 
 export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) {
   const { login } = useAuth();
@@ -16,6 +16,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
   useEffect(() => {
     // Check if we just returned from Supabase OAuth redirect
     const checkSession = async () => {
+      if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         handleSupabaseUser(session.user);
@@ -42,6 +43,10 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
   };
 
   const handleGoogleLogin = async () => {
+    if (!supabase) {
+      alert('El login con Google no está configurado (faltan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).');
+      return;
+    }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -170,6 +175,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
             </button>
           </form>
 
+          {isSupabaseConfigured && (<>
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-zinc-800"></div>
@@ -192,6 +198,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
             </svg>
             Entrar con Google (Supabase)
           </button>
+          </>)}
 
           <footer className="mt-8 text-center text-white">
             <button 

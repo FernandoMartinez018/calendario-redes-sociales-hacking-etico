@@ -6,8 +6,14 @@ const { Pool } = pkg;
 
 import * as schema from './schema.js';
 
+// La app usa DATABASE_URL si existe; si no, cae a la misma URL que
+// drizzle.config.ts. Así .env puede quedarse solo con Groq y la app igual conecta.
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgresql://usergeneric:trcqlpn4xoReEj97X6UgstQyrNgbwem0@dpg-d81mjmd7vvec73a949gg-a.virginia-postgres.render.com/multiclassdatabase?sslmode=require';
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: {
     rejectUnauthorized: false,
   },

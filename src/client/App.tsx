@@ -4,12 +4,27 @@ import MainLayout from './layouts/MainLayout.tsx';
 import Dashboard from './components/Dashboard.tsx';
 import CalendarView from './components/CalendarView.tsx';
 import AIGenerator from './components/AIGenerator.tsx';
-import AdsView from './components/AdsView.tsx';
+import ContentAssistant from './components/ContentAssistant.tsx';
+import MediaLibrary from './components/MediaLibrary.tsx';
+import PostsView from './components/PostsView.tsx';
+import SeoView from './components/SeoView.tsx';
 import MetricsView from './components/MetricsView.tsx';
 import SettingsView from './components/SettingsView.tsx';
 import AuthView from './components/AuthView.tsx';
 import PostModal from './components/PostModal.tsx';
 import { PlusCircle } from 'lucide-react';
+
+const TAB_TITLES: Record<string, string> = {
+  dashboard: 'Dashboard',
+  calendar: 'Calendario',
+  posts: 'Publicaciones',
+  assistant: 'Asistente IA',
+  ai: 'Post rápido',
+  seo: 'Slogans & SEO',
+  media: 'Multimedia',
+  analytics: 'Métricas',
+  settings: 'Configuración',
+};
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -35,8 +50,11 @@ function AppContent() {
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
       case 'calendar': return <CalendarView />;
+      case 'posts': return <PostsView />;
+      case 'assistant': return <ContentAssistant />;
       case 'ai': return <AIGenerator />;
-      case 'ads': return <AdsView />;
+      case 'seo': return <SeoView />;
+      case 'media': return <MediaLibrary />;
       case 'analytics': return <MetricsView />;
       case 'settings': return <SettingsView />;
       default: return (
@@ -51,8 +69,8 @@ function AppContent() {
     <MainLayout activeTab={activeTab} setActiveTab={setActiveTab}>
       <header className="mb-10 flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white mb-2 capitalize font-display">
-            {activeTab.replace('-', ' ')}
+          <h1 className="text-4xl font-black tracking-tight text-white mb-2 font-display">
+            {TAB_TITLES[activeTab] || activeTab}
           </h1>
           <p className="text-zinc-400 font-medium italic opacity-70">
             Optimizando la presencia social de {user.dealerName}

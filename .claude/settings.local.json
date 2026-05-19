@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm uninstall *)",
+      "Bash(npm run *)",
+      "Bash(npx tsx *)",
+      "Bash(mkdir -p scripts)",
+      "Bash(git mv *)",
+      "Bash(mv simulate-month.ts scripts/simulate-month.ts)",
+      "Bash(mv upload-images.ts scripts/upload-images.ts)",
+      "Bash(grep -rn \"shadcn\" src/ index.html)",
+      "Bash(grep -rn \"jwt-decode\" --include=\"*.ts\" --include=\"*.tsx\" src/ server.ts)"
+    ]
+  }
+}

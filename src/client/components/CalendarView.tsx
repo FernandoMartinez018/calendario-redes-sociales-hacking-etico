@@ -284,6 +284,21 @@ export default function CalendarView() {
               exit={{ opacity: 0, scale: 0.98 }}
               className="p-8 max-w-4xl mx-auto space-y-12"
             >
+              {posts.filter(p => p.status === 'DRAFT' || !p.scheduledAt).length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                    <CalendarDays size={14} className="text-zinc-600" />
+                    Borradores sin fecha — agéndalos en "Publicaciones"
+                  </p>
+                  {posts.filter(p => p.status === 'DRAFT' || !p.scheduledAt).map(p => (
+                    <div key={p.id} className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 border-dashed">
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 shrink-0">Borrador</span>
+                      <p className="text-sm text-zinc-300 truncate flex-1 font-bold uppercase tracking-tight">{p.copy}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {posts.filter(p => p.scheduledAt && new Date(p.scheduledAt) >= startOfDay(new Date()))
                 .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
                 .length === 0 ? (
