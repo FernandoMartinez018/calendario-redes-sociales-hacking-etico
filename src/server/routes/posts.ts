@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../../db/index.js';
 import { contentPosts } from '../../db/schema.js';
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { authMiddleware, AuthRequest } from '../middlewares/auth.ts';
+import { authMiddleware, AuthRequest } from '../middlewares/auth.js';
 
 const router = Router();
 
