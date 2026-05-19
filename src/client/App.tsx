@@ -8,6 +8,7 @@ import ContentAssistant from './components/ContentAssistant.tsx';
 import MediaLibrary from './components/MediaLibrary.tsx';
 import PostsView from './components/PostsView.tsx';
 import SeoView from './components/SeoView.tsx';
+import Notifications from './components/Notifications.tsx';
 import MetricsView from './components/MetricsView.tsx';
 import SettingsView from './components/SettingsView.tsx';
 import AuthView from './components/AuthView.tsx';
@@ -88,9 +89,11 @@ function AppContent() {
         </div>
       </header>
 
+      <Notifications setActiveTab={setActiveTab} />
+
       {renderContent()}
 
-      <PostModal 
+      <PostModal
         isOpen={isPostModalOpen} 
         onClose={() => setIsPostModalOpen(false)} 
       />

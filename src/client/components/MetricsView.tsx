@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Eye, Heart, FileBarChart } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart3, TrendingUp, Eye, Heart, FileBarChart, Download } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -17,6 +17,12 @@ export default function MetricsView() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [fNet, setFNet] = useState('ALL');
+  const [fFmt, setFFmt] = useState('ALL');
+  const [fPil, setFPil] = useState('ALL');
+  const [fFrom, setFFrom] = useState('');
+  const [fTo, setFTo] = useState('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -32,21 +38,43 @@ export default function MetricsView() {
 
   const history: any[] = data?.history || [];
 
-  // Última métrica por publicación (history viene desc por fecha).
-  const latestByPost: Record<string, any> = {};
-  for (const h of history) {
-    if (!latestByPost[h.post.id]) latestByPost[h.post.id] = h;
-  }
-  const latest = Object.values(latestByPost);
+  const opts = useMemo(() => {
+    const u = (k: (h: any) => any) =>
+      Array.from(new Set(history.map(k).filter(Boolean))).sort();
+    return {
+      nets: u((h) => h.post.platform),
+      fmts: u((h) => h.post.type),
+      pils: u((h) => h.post.pillar),
+    };
+  }, [history]);
 
-  const avgEngBy = (keyFn: (h: any) => string | null | undefined) => {
-    const groups: Record<string, number[]> = {};
+  const filtered = useMemo(() => {
+    const from = fFrom ? new Date(fFrom).getTime() : -Infinity;
+    const to = fTo ? new Date(fTo).getTime() + 86400000 : Infinity;
+    return history.filter((h) => {
+      if (fNet !== 'ALL' && h.post.platform !== fNet) return false;
+      if (fFmt !== 'ALL' && h.post.type !== fFmt) return false;
+      if (fPil !== 'ALL' && h.post.pillar !== fPil) return false;
+      const t = new Date(h.snapshot.recordedAt).getTime();
+      return t >= from && t <= to;
+    });
+  }, [history, fNet, fFmt, fPil, fFrom, fTo]);
+
+  // Última métrica por publicación dentro del filtro.
+  const latest = useMemo(() => {
+    const by: Record<string, any> = {};
+    for (const h of filtered) if (!by[h.post.id]) by[h.post.id] = h;
+    return Object.values(by) as any[];
+  }, [filtered]);
+
+  const avgEngBy = (keyFn: (h: any) => any) => {
+    const g: Record<string, number[]> = {};
     for (const h of latest) {
       const k = keyFn(h);
       if (!k) continue;
-      (groups[k] ||= []).push(parseFloat(h.snapshot.engagement) || 0);
+      (g[k] ||= []).push(parseFloat(h.snapshot.engagement) || 0);
     }
-    return Object.entries(groups)
+    return Object.entries(g)
       .map(([name, arr]) => ({
         name,
         value: +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2),
@@ -58,26 +86,65 @@ export default function MetricsView() {
   const byPlatform = avgEngBy((h) => h.post.platform);
   const byFormat = avgEngBy((h) => h.post.type);
   const byPillar = avgEngBy((h) => h.post.pillar);
-  const byDay = avgEngBy((h) => (h.post.scheduledAt ? DOW[new Date(h.post.scheduledAt).getDay()] : null));
+  const byDay = avgEngBy((h) =>
+    h.post.scheduledAt ? DOW[new Date(h.post.scheduledAt).getDay()] : null
+  );
 
-  const chartData = [...history]
-    .reverse()
-    .map((item) => ({
-      date: new Date(item.snapshot.recordedAt).toLocaleDateString(undefined, {
-        day: '2-digit',
-        month: 'short',
-      }),
-      engagement: parseFloat(item.snapshot.engagement) || 0,
-      vistas: item.snapshot.views,
-    }));
+  const chartData = [...filtered].reverse().map((item) => ({
+    date: new Date(item.snapshot.recordedAt).toLocaleDateString(undefined, {
+      day: '2-digit',
+      month: 'short',
+    }),
+    engagement: parseFloat(item.snapshot.engagement) || 0,
+  }));
+
+  const stats = useMemo(() => {
+    const likes = latest.reduce((a, h) => a + (h.snapshot.likes || 0), 0);
+    const views = latest.reduce((a, h) => a + (h.snapshot.views || 0), 0);
+    const eng = latest.length
+      ? (
+          latest.reduce((a, h) => a + (parseFloat(h.snapshot.engagement) || 0), 0) /
+          latest.length
+        ).toFixed(2)
+      : 0;
+    return { likes, views, eng, n: latest.length };
+  }, [latest]);
+
+  const exportCSV = () => {
+    const head = ['Copy', 'Red', 'Formato', 'Pilar', 'Fecha', 'Likes', 'Comentarios', 'Compartidos', 'Vistas', 'Engagement'];
+    const lines = [head];
+    for (const h of latest) {
+      lines.push([
+        h.post.copy || '',
+        h.post.platform || '',
+        h.post.type || '',
+        h.post.pillar || '',
+        new Date(h.snapshot.recordedAt).toLocaleString(),
+        h.snapshot.likes,
+        h.snapshot.comments,
+        h.snapshot.shares,
+        h.snapshot.views,
+        `${h.snapshot.engagement}%`,
+      ]);
+    }
+    const csv = lines
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `metricas_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const maxBar = (arr: any[]) => Math.max(1, ...arr.map((x) => x.value));
-
   const Breakdown = ({ title, rows }: { title: string; rows: any[] }) => (
     <div className="bg-zinc-950 border border-zinc-800 p-6 rounded-3xl">
       <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-5">{title}</h3>
       {rows.length === 0 ? (
-        <p className="text-[11px] text-zinc-700 italic">Sin datos aún</p>
+        <p className="text-[11px] text-zinc-700 italic">Sin datos</p>
       ) : (
         <div className="space-y-4">
           {rows.map((r) => (
@@ -112,16 +179,49 @@ export default function MetricsView() {
     );
   }
 
-  const stats = data?.stats || { avgEngagement: 0, totalLikes: 0, totalViews: 0 };
+  const sel =
+    'bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-orange-500';
 
   return (
     <div className="space-y-6 pb-10">
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+        <select value={fNet} onChange={(e) => setFNet(e.target.value)} className={sel}>
+          <option value="ALL">Todas las redes</option>
+          {opts.nets.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <select value={fFmt} onChange={(e) => setFFmt(e.target.value)} className={sel}>
+          <option value="ALL">Todo formato</option>
+          {opts.fmts.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <select value={fPil} onChange={(e) => setFPil(e.target.value)} className={sel}>
+          <option value="ALL">Todo pilar</option>
+          {opts.pils.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className={sel} />
+        <span className="text-zinc-600 text-xs">→</span>
+        <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className={sel} />
+        <div className="flex-1" />
+        <button
+          onClick={exportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-colors"
+        >
+          <Download size={14} /> Exportar CSV
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Engagement prom.', value: `${stats.avgEngagement || 0}%`, icon: TrendingUp, color: 'text-orange-500' },
-          { label: 'Vistas totales', value: (stats.totalViews || 0).toLocaleString(), icon: Eye, color: 'text-blue-400' },
-          { label: 'Likes totales', value: (stats.totalLikes || 0).toLocaleString(), icon: Heart, color: 'text-rose-500' },
-          { label: 'Publicaciones medidas', value: latest.length, icon: FileBarChart, color: 'text-emerald-500' },
+          { label: 'Engagement prom.', value: `${stats.eng || 0}%`, icon: TrendingUp, color: 'text-orange-500' },
+          { label: 'Vistas', value: stats.views.toLocaleString(), icon: Eye, color: 'text-blue-400' },
+          { label: 'Likes', value: stats.likes.toLocaleString(), icon: Heart, color: 'text-rose-500' },
+          { label: 'Publicaciones', value: stats.n, icon: FileBarChart, color: 'text-emerald-500' },
         ].map((s) => (
           <div key={s.label} className="bg-zinc-950 border border-zinc-800 p-5 rounded-2xl">
             <div className={`p-2 w-fit rounded-lg bg-zinc-900 border border-zinc-800 ${s.color} mb-3`}>
@@ -136,10 +236,9 @@ export default function MetricsView() {
       {latest.length === 0 ? (
         <div className="py-24 text-center border border-zinc-800 border-dashed rounded-3xl">
           <BarChart3 size={40} className="mx-auto text-zinc-700 mb-4" />
-          <p className="text-zinc-400 font-bold">Aún no registras métricas</p>
+          <p className="text-zinc-400 font-bold">Sin métricas para este filtro</p>
           <p className="text-zinc-600 text-xs mt-1">
-            Ve a <b>Publicaciones</b> → filtro <b>Publicadas</b> → botón de gráfica → <b>Registrar
-            métricas</b>.
+            Registra métricas en Publicaciones o ajusta los filtros.
           </p>
         </div>
       ) : (
@@ -147,10 +246,10 @@ export default function MetricsView() {
           <div className="bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden">
             <div className="p-6 border-b border-zinc-800 bg-zinc-900/20">
               <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400">
-                Rendimiento en el tiempo
+                Engagement en el tiempo
               </h3>
             </div>
-            <div className="p-6 h-[320px] w-full">
+            <div className="p-6 h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
@@ -162,79 +261,18 @@ export default function MetricsView() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} opacity={0.3} />
                   <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} dy={10} />
                   <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#09090b',
-                      border: '1px solid #27272a',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    name="Engagement %"
-                    dataKey="engagement"
-                    stroke="#f97316"
-                    fill="url(#ce)"
-                    strokeWidth={2}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '8px', fontSize: '12px' }} />
+                  <Area type="monotone" name="Engagement %" dataKey="engagement" stroke="#f97316" fill="url(#ce)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Breakdown title="Engagement por red" rows={byPlatform} />
+            <Breakdown title="Por red" rows={byPlatform} />
             <Breakdown title="Por formato" rows={byFormat} />
             <Breakdown title="Por pilar" rows={byPillar} />
             <Breakdown title="Mejor día" rows={byDay} />
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden">
-            <div className="p-6 border-b border-zinc-800 bg-zinc-900/20">
-              <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400">
-                Publicaciones con mejor rendimiento
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-zinc-900/50 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                    <th className="p-4 border-b border-zinc-800">Contenido</th>
-                    <th className="p-4 border-b border-zinc-800">Red</th>
-                    <th className="p-4 border-b border-zinc-800">Likes</th>
-                    <th className="p-4 border-b border-zinc-800">Vistas</th>
-                    <th className="p-4 border-b border-zinc-800">Engagement</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(latest as any[])
-                    .sort(
-                      (a, b) => parseFloat(b.snapshot.engagement) - parseFloat(a.snapshot.engagement)
-                    )
-                    .slice(0, 8)
-                    .map((h) => (
-                      <tr key={h.snapshot.id} className="hover:bg-zinc-900/40 transition-colors">
-                        <td className="p-4 border-b border-zinc-800/50 max-w-[280px]">
-                          <p className="text-xs font-bold text-white truncate">{h.post.copy}</p>
-                        </td>
-                        <td className="p-4 border-b border-zinc-800/50 text-[10px] font-black text-zinc-400 uppercase">
-                          {h.post.platform || '—'}
-                        </td>
-                        <td className="p-4 border-b border-zinc-800/50 text-[11px] font-black text-white tabular-nums">
-                          {h.snapshot.likes.toLocaleString()}
-                        </td>
-                        <td className="p-4 border-b border-zinc-800/50 text-[11px] font-black text-white tabular-nums">
-                          {h.snapshot.views.toLocaleString()}
-                        </td>
-                        <td className="p-4 border-b border-zinc-800/50 text-[11px] font-black text-orange-500 tabular-nums">
-                          {h.snapshot.engagement}%
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </>
       )}

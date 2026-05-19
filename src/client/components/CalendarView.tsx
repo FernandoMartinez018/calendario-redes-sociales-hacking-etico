@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -14,12 +14,14 @@ import {
   CalendarDays,
   Loader2,
   MoreVertical,
-  ExternalLink
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addDays, subDays, startOfDay, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../lib/api.js';
 import PostModal from './PostModal.jsx';
+import PostEditModal from './PostEditModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 
 type ViewType = 'Mes' | 'Semana' | 'Lista';
@@ -31,6 +33,8 @@ export default function CalendarView() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDateForModal, setSelectedDateForModal] = useState<string | undefined>(undefined);
+  const [editingPost, setEditingPost] = useState<any>(null);
+  const draggedRef = useRef<any>(null);
 
   const fetchPosts = async () => {
     try {
@@ -41,6 +45,56 @@ export default function CalendarView() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const rescheduleTo = async (post: any, day: Date) => {
+    if (!post) return;
+    const old = post.scheduledAt ? new Date(post.scheduledAt) : new Date();
+    const nd = new Date(day);
+    nd.setHours(old.getHours(), old.getMinutes(), 0, 0);
+    try {
+      await api.patch(`/api/posts/${post.id}`, { scheduledAt: nd, status: 'SCHEDULED' });
+      fetchPosts();
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'No se pudo reprogramar.');
+    }
+  };
+
+  const handleDropOnDay = (day: Date) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const p = draggedRef.current;
+    draggedRef.current = null;
+    if (p) rescheduleTo(p, day);
+  };
+
+  const exportCalendarCSV = () => {
+    const rows: any[] = [['Fecha', 'Hora', 'Red', 'Formato', 'Estado', 'Copy', 'Hashtags', 'URL']];
+    posts
+      .filter((p) => p.scheduledAt)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+      .forEach((p) => {
+        const d = new Date(p.scheduledAt);
+        rows.push([
+          d.toLocaleDateString(),
+          d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          p.platform || '',
+          p.type || '',
+          p.status || '',
+          p.copy || '',
+          p.hashtags || '',
+          p.postUrl || '',
+        ]);
+      });
+    const csv = rows
+      .map((r) => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calendario_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -139,7 +193,13 @@ export default function CalendarView() {
               </button>
             ))}
           </div>
-          <button 
+          <button
+            onClick={exportCalendarCSV}
+            className="bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black uppercase tracking-widest h-9 px-4 rounded-lg flex items-center gap-2 text-white transition-all"
+          >
+            <Download size={14} /> Exportar
+          </button>
+          <button
             onClick={() => handleOpenModal()}
             className="bg-orange-600 hover:bg-orange-700 text-[10px] font-black uppercase tracking-widest h-9 px-6 rounded-lg flex items-center gap-2 text-white transition-all shadow-lg shadow-orange-900/20 hover:scale-[1.02] active:scale-95"
           >
@@ -175,8 +235,10 @@ export default function CalendarView() {
                   const isCurrentMonth = isSameMonth(day, monthStart);
                   
                   return (
-                    <div 
-                      key={day.toString()} 
+                    <div
+                      key={day.toString()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={handleDropOnDay(day)}
                       className={`p-3 border-r border-b border-zinc-800/40 group hover:bg-zinc-900/40 transition-colors relative flex flex-col ${
                         i % 7 === 6 ? 'border-r-0' : ''
                       } ${!isCurrentMonth ? 'bg-zinc-950/40' : ''}`}
@@ -199,9 +261,12 @@ export default function CalendarView() {
 
                       <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar pr-1">
                         {dayPosts.map((post) => (
-                          <div 
+                          <div
                             key={post.id}
-                            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800/60 group/event hover:border-orange-500/50 transition-all shadow-sm cursor-pointer"
+                            draggable
+                            onDragStart={() => { draggedRef.current = post; }}
+                            onClick={() => setEditingPost(post)}
+                            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800/60 group/event hover:border-orange-500/50 transition-all shadow-sm cursor-pointer active:cursor-grabbing"
                           >
                             <div className="flex items-center justify-between mb-1">
                               {getPlatformIcon(post.platform || 'INSTAGRAM')}
@@ -231,7 +296,7 @@ export default function CalendarView() {
               {weekDays.map((day, i) => {
                 const dayPosts = posts.filter(p => p.scheduledAt && isSameDay(new Date(p.scheduledAt), day));
                 return (
-                  <div key={day.toString()} className={`border-r border-zinc-800/40 last:border-0 flex flex-col bg-zinc-950/20 group ${isToday(day) ? 'bg-orange-500/[0.02]' : ''}`}>
+                  <div key={day.toString()} onDragOver={(e) => e.preventDefault()} onDrop={handleDropOnDay(day)} className={`border-r border-zinc-800/40 last:border-0 flex flex-col bg-zinc-950/20 group ${isToday(day) ? 'bg-orange-500/[0.02]' : ''}`}>
                     <div className={`p-4 border-b border-zinc-800/40 text-center space-y-1 ${isToday(day) ? 'bg-orange-500/5' : ''}`}>
                       <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{format(day, 'EEE', { locale: es })}</p>
                       <p className={`text-xl font-black tabular-nums ${isToday(day) ? 'text-orange-500' : 'text-white'}`}>{format(day, 'd')}</p>
@@ -246,9 +311,12 @@ export default function CalendarView() {
                       </button>
 
                       {dayPosts.map((post) => (
-                        <div 
+                        <div
                           key={post.id}
-                          className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3 group/item hover:border-orange-500/30 transition-all shadow-xl"
+                          draggable
+                          onDragStart={() => { draggedRef.current = post; }}
+                          onClick={() => setEditingPost(post)}
+                          className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3 group/item hover:border-orange-500/30 transition-all shadow-xl cursor-pointer active:cursor-grabbing"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -288,10 +356,10 @@ export default function CalendarView() {
                 <div className="space-y-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
                     <CalendarDays size={14} className="text-zinc-600" />
-                    Borradores sin fecha — agéndalos en "Publicaciones"
+                    Borradores sin fecha — clic para editar / agendar
                   </p>
                   {posts.filter(p => p.status === 'DRAFT' || !p.scheduledAt).map(p => (
-                    <div key={p.id} className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 border-dashed">
+                    <div key={p.id} onClick={() => setEditingPost(p)} className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 border-dashed cursor-pointer hover:border-orange-500/40 transition-colors">
                       <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 shrink-0">Borrador</span>
                       <p className="text-sm text-zinc-300 truncate flex-1 font-bold uppercase tracking-tight">{p.copy}</p>
                     </div>
@@ -324,7 +392,7 @@ export default function CalendarView() {
                             </div>
                             <div className="w-px flex-1 bg-zinc-800 my-4 group-last:hidden" />
                          </div>
-                         <div className="flex-1 bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 hover:shadow-2xl hover:border-zinc-700 transition-all translate-y-[-2px]">
+                         <div onClick={() => setEditingPost(post)} className="flex-1 bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 hover:shadow-2xl hover:border-zinc-700 transition-all translate-y-[-2px] cursor-pointer">
                             <div className="flex items-center justify-between mb-4">
                                <div className="flex items-center gap-3">
                                   <div className="p-2 bg-zinc-900 rounded-lg text-orange-500 border border-zinc-800">
@@ -366,6 +434,12 @@ export default function CalendarView() {
           fetchPosts(); // Refresh on close
         } }
         initialScheduledAt={selectedDateForModal}
+      />
+
+      <PostEditModal
+        post={editingPost}
+        onClose={() => setEditingPost(null)}
+        onSaved={fetchPosts}
       />
     </div>
   );

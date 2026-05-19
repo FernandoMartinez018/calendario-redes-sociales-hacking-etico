@@ -41,6 +41,7 @@ export const contentPosts = pgTable('content_posts', {
   mediaUrl: text('media_url'),
   postUrl: text('post_url'), // URL pública de la publicación ya posteada
   pillar: text('pillar'), // Pilar de contenido (para analítica)
+  reminderSent: integer('reminder_sent').default(0).notNull(), // 1 = recordatorio 1h enviado
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -73,6 +74,15 @@ export const aiHistories = pgTable('ai_histories', {
   response: text('response').notNull(),
   tokens: integer('tokens').default(0).notNull(),
   userId: uuid('user_id').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  used: integer('used').default(0).notNull(), // 0 = no usado, 1 = usado
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

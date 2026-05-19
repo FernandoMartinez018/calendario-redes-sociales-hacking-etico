@@ -57,16 +57,22 @@ router.post('/', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
+    const userId = req.user!.userId;
     const updateData: any = { ...req.body };
+    delete updateData.userId; // no se puede cambiar el dueño
     if ('scheduledAt' in updateData) updateData.scheduledAt = toDate(updateData.scheduledAt);
     if ('publishedAt' in updateData) updateData.publishedAt = toDate(updateData.publishedAt);
 
     const [updatedPost] = await db.update(contentPosts)
       .set(updateData)
-      .where(eq(contentPosts.id, req.params.id))
+      .where(and(eq(contentPosts.id, req.params.id), eq(contentPosts.userId, userId)))
       .returning();
+
+    if (!updatedPost) {
+      return res.status(404).json({ error: 'Publicación no encontrada o no es tuya.' });
+    }
     res.json(updatedPost);
   } catch (error) {
     console.error('Update post error:', error);

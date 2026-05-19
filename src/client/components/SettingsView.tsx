@@ -47,6 +47,8 @@ export default function SettingsView() {
   const [saving, setSaving] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [pwd, setPwd] = useState({ current: '', next: '', confirm: '' });
+  const [savingPwd, setSavingPwd] = useState(false);
 
   useEffect(() => {
     if (activeSubTab === 'social') {
@@ -103,6 +105,32 @@ export default function SettingsView() {
       console.error(err);
     } finally {
       setLoadingAccounts(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwd.next.length < 6) {
+      setMessage({ type: 'error', text: 'La nueva contraseña debe tener al menos 6 caracteres' });
+      return;
+    }
+    if (pwd.next !== pwd.confirm) {
+      setMessage({ type: 'error', text: 'Las contraseñas no coinciden' });
+      return;
+    }
+    setSavingPwd(true);
+    setMessage(null);
+    try {
+      await api.post('/api/settings/change-password', {
+        currentPassword: pwd.current,
+        newPassword: pwd.next,
+      });
+      setMessage({ type: 'success', text: 'Contraseña actualizada correctamente' });
+      setPwd({ current: '', next: '', confirm: '' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.error || 'Error al cambiar la contraseña' });
+    } finally {
+      setSavingPwd(false);
     }
   };
 
@@ -491,11 +519,48 @@ export default function SettingsView() {
                     </div>
 
                     <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-2xl">
-                      <p className="text-xs font-black text-white uppercase tracking-tight mb-2">Cambiar Contraseña</p>
-                      <p className="text-[10px] text-zinc-500 mb-6 font-medium italic">Se recomienda usar una mezcla de letras, números y símbolos.</p>
-                      <button className="text-[10px] font-black uppercase tracking-widest text-orange-500 hover:text-orange-400 transition-colors">
-                        Iniciar proceso de cambio &rarr;
-                      </button>
+                      <p className="text-xs font-black text-white uppercase tracking-tight mb-1">Cambiar Contraseña</p>
+                      <p className="text-[10px] text-zinc-500 mb-4 font-medium italic">Mínimo 6 caracteres. Necesitas tu contraseña actual.</p>
+                      <form onSubmit={handleChangePassword} className="space-y-3">
+                        <input
+                          type="password"
+                          placeholder="Contraseña actual"
+                          value={pwd.current}
+                          onChange={(e) => setPwd({ ...pwd, current: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500"
+                        />
+                        <input
+                          type="password"
+                          placeholder="Nueva contraseña"
+                          value={pwd.next}
+                          onChange={(e) => setPwd({ ...pwd, next: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500"
+                        />
+                        <input
+                          type="password"
+                          placeholder="Confirmar nueva contraseña"
+                          value={pwd.confirm}
+                          onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500"
+                        />
+                        {message && (
+                          <p
+                            className={`text-[10px] font-bold uppercase tracking-widest ${
+                              message.type === 'success' ? 'text-emerald-500' : 'text-rose-500'
+                            }`}
+                          >
+                            {message.text}
+                          </p>
+                        )}
+                        <button
+                          type="submit"
+                          disabled={savingPwd}
+                          className="bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {savingPwd ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                          Actualizar contraseña
+                        </button>
+                      </form>
                     </div>
 
                     <div className="p-6 border border-rose-500/20 bg-rose-500/5 rounded-2xl">
