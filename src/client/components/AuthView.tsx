@@ -4,6 +4,7 @@ import { LogIn, UserPlus, Bike, ArrowRight, KeyRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { signInWithGoogle, signOutGoogle, isFirebaseConfigured } from '../lib/firebase.js';
 import { sendResetEmailJS, sendWelcomeEmailJS } from '../lib/emailjs.js';
+import { toast } from 'sonner';
 
 export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) {
   const { login } = useAuth();
@@ -24,7 +25,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
 
   const handleGoogleLogin = async () => {
     if (!isFirebaseConfigured) {
-      alert('El login con Google no está configurado (falta pegar la firebaseConfig en src/client/lib/firebase.ts).');
+      toast.error('El login con Google no está configurado.');
       return;
     }
     try {
@@ -40,7 +41,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
       // Firebase para no dejarla colgada y mostramos el mensaje del servidor.
       await signOutGoogle().catch(() => {});
       const msg = err?.response?.data?.error || 'No se pudo iniciar sesión con Google.';
-      alert(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
     try {
       if (resetToken) {
         await api.post('/api/auth/reset-password', { token: resetToken, newPassword: password });
-        alert('Contraseña actualizada. Inicia sesión con la nueva.');
+        toast.success('Contraseña actualizada. Inicia sesión con la nueva.');
         backToLogin();
         return;
       }
@@ -67,13 +68,16 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
         const { data } = await api.post('/api/auth/forgot-password', { email });
         if (data.link) {
           const ok = await sendResetEmailJS(data.email, data.link);
-          alert(
-            ok
-              ? 'Te enviamos un correo con el enlace para restablecer tu contraseña. Revisa tu bandeja (y spam).'
-              : `No se pudo enviar el correo (revisa la config de EmailJS).\n\nEnlace de reseteo (válido 1 h):\n${data.link}`
-          );
+          if (ok) {
+            toast.success('Te enviamos un correo con el enlace para restablecer tu contraseña. Revisa tu bandeja (y spam).');
+          } else {
+            toast.error('No se pudo enviar el correo (revisa la config de EmailJS).', {
+              description: `Enlace de reseteo (válido 1 h): ${data.link}`,
+              duration: 15000,
+            });
+          }
         } else {
-          alert(data.message);
+          toast.info(data.message);
         }
         setIsForgot(false);
         return;
@@ -91,7 +95,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
       login(data.token, data.user);
       onLogin(data.user);
     } catch (err: any) {
-      alert(err?.response?.data?.error || 'Error: revisa los datos.');
+      toast.error(err?.response?.data?.error || 'Error: revisa los datos.');
     } finally {
       setLoading(false);
     }
