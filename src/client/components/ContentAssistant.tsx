@@ -10,12 +10,23 @@ import {
   Calendar as CalendarIcon,
   Layers,
   CheckCircle2,
+  Clapperboard,
+  Camera,
 } from 'lucide-react';
 import api from '../lib/api.js';
 import MediaPicker from './MediaPicker.tsx';
 
 const ALL_NETWORKS = ['INSTAGRAM', 'TIKTOK', 'FACEBOOK', 'X', 'YOUTUBE'];
 const FORMATS = ['REEL', 'STORY', 'POST', 'SHORT'];
+const PILLARS = [
+  { v: 'venta', l: 'Venta' },
+  { v: 'oferta', l: 'Oferta / Promo' },
+  { v: 'evento', l: 'Evento / Rodada' },
+  { v: 'educativo', l: 'Educativo' },
+  { v: 'testimonio', l: 'Testimonios' },
+  { v: 'mantenimiento', l: 'Mantenimiento / Tips' },
+  { v: 'detras_camaras', l: 'Detrás de cámaras' },
+];
 
 type Idea = {
   pillar: string;
@@ -37,6 +48,7 @@ export default function ContentAssistant() {
   const [periodDays, setPeriodDays] = useState(30);
   const [goal, setGoal] = useState('');
   const [preferredHour, setPreferredHour] = useState('');
+  const [pillars, setPillars] = useState<string[]>([]);
 
   // Paso 2 — ideas
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -51,6 +63,7 @@ export default function ContentAssistant() {
   const [mediaUrl, setMediaUrl] = useState('');
   const [photoIdea, setPhotoIdea] = useState('');
   const [aiImagePrompt, setAiImagePrompt] = useState('');
+  const [productionBrief, setProductionBrief] = useState('');
   const [variants, setVariants] = useState<string[]>([]);
   const [loadingVar, setLoadingVar] = useState(false);
 
@@ -78,6 +91,9 @@ export default function ContentAssistant() {
   const toggleNetwork = (n: string) =>
     setNetworks((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]));
 
+  const togglePillar = (p: string) =>
+    setPillars((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+
   const generateIdeas = async () => {
     if (networks.length === 0) {
       alert('Selecciona al menos una red social.');
@@ -92,6 +108,7 @@ export default function ContentAssistant() {
         periodDays,
         goal,
         preferredHour,
+        pillars,
       });
       setIdeas(data.ideas || []);
       setStep(2);
@@ -112,6 +129,7 @@ export default function ContentAssistant() {
     setMediaUrl('');
     setPhotoIdea('');
     setAiImagePrompt('');
+    setProductionBrief('');
     setVariants([]);
     try {
       const { data } = await api.post('/api/ai/expand-idea', { idea });
@@ -119,6 +137,7 @@ export default function ContentAssistant() {
       setHashtags(data.hashtags || '');
       setPhotoIdea(data.photoIdea || '');
       setAiImagePrompt(data.aiImagePrompt || '');
+      setProductionBrief(data.productionBrief || '');
     } catch (err: any) {
       setCopy('');
       setHashtags('');
@@ -205,7 +224,7 @@ export default function ContentAssistant() {
       <div className="max-w-3xl mx-auto bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 backdrop-blur-sm">
         <div className="flex items-center gap-3 mb-2">
           <Wand2 className="text-orange-500" size={22} />
-          <h3 className="text-xl font-bold text-white">Asistente de Contenido</h3>
+          <h3 className="text-xl font-bold text-white">Plan de contenido</h3>
         </div>
         <p className="text-sm text-zinc-400 mb-8">
           Configura el contexto y la IA generará ideas; luego revisas cada publicación una por una.
@@ -229,6 +248,31 @@ export default function ContentAssistant() {
                   }`}
                 >
                   {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">
+              ¿En qué te enfocas?{' '}
+              <span className="text-zinc-600 normal-case font-medium tracking-normal">
+                (opcional — si no eliges, la IA equilibra los pilares)
+              </span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PILLARS.map((p) => (
+                <button
+                  key={p.v}
+                  type="button"
+                  onClick={() => togglePillar(p.v)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    pillars.includes(p.v)
+                      ? 'bg-orange-500/10 border-orange-500 text-orange-500'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {p.l}
                 </button>
               ))}
             </div>
@@ -258,6 +302,7 @@ export default function ContentAssistant() {
               <input
                 type="date"
                 value={periodStart}
+                min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setPeriodStart(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-500"
               />
@@ -323,12 +368,24 @@ export default function ContentAssistant() {
 
   /* ───────── Paso 2: Lista de ideas ───────── */
   if (step === 2) {
+    const countBy = (key: 'pillar' | 'network') => {
+      const m: Record<string, number> = {};
+      ideas.forEach((it) => {
+        const k = String((it as any)[key] || '—');
+        m[k] = (m[k] || 0) + 1;
+      });
+      return Object.entries(m).sort((a, b) => b[1] - a[1]);
+    };
+    const pillarMix = countBy('pillar');
+    const netMix = countBy('network');
+    const dates = ideas.map((it) => it.suggestedAt).filter(Boolean).sort();
+    const rango = dates.length ? `${dates[0].slice(0, 10)} → ${dates[dates.length - 1].slice(0, 10)}` : '';
     return (
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Layers className="text-orange-500" size={22} />
-            <h3 className="text-xl font-bold text-white">{ideas.length} ideas generadas</h3>
+            <h3 className="text-xl font-bold text-white">Tu plan: {ideas.length} publicaciones</h3>
           </div>
           <button
             onClick={resetAll}
@@ -336,6 +393,39 @@ export default function ContentAssistant() {
           >
             ← Reconfigurar
           </button>
+        </div>
+
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+              Resumen del plan
+            </span>
+            {rango && <span className="text-[10px] text-zinc-600 tabular-nums">{rango}</span>}
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-2">
+            Mezcla de pilares
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {pillarMix.map(([k, n]) => (
+              <span
+                key={k}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20"
+              >
+                {k} · {n}
+              </span>
+            ))}
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 mb-2">Por red</p>
+          <div className="flex flex-wrap gap-2">
+            {netMix.map(([k, n]) => (
+              <span
+                key={k}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300"
+              >
+                {k} · {n}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-3 mb-8">
@@ -440,6 +530,26 @@ export default function ContentAssistant() {
             </div>
           ) : (
             <>
+              {productionBrief && (
+                <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    {['REEL', 'SHORT', 'STORY'].includes(format) ? (
+                      <Clapperboard size={15} className="text-orange-500" />
+                    ) : (
+                      <Camera size={15} className="text-orange-500" />
+                    )}
+                    <span className="text-[10px] font-black uppercase tracking-widest text-orange-500">
+                      {['REEL', 'SHORT', 'STORY'].includes(format)
+                        ? 'Cómo grabarlo (paso a paso)'
+                        : 'Cómo es la publicación / foto'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
+                    {productionBrief}
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block">
                   Copy

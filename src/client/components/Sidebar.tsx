@@ -24,7 +24,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }: Sid
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'calendar', label: 'Calendario', icon: CalendarIcon },
     { id: 'posts', label: 'Publicaciones', icon: FileText },
-    { id: 'assistant', label: 'Asistente IA', icon: Wand2 },
+    { id: 'assistant', label: 'Plan de contenido', icon: Wand2 },
     { id: 'ai', label: 'Post rápido', icon: Sparkles },
     { id: 'seo', label: 'Slogans & SEO', icon: Megaphone },
     { id: 'media', label: 'Multimedia', icon: ImageIcon },

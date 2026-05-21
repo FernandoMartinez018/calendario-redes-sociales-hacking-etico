@@ -164,6 +164,11 @@ router.post('/content-ideas', authMiddleware, async (req: AuthRequest, res) => {
       ? req.body.preferredHour
       : '';
 
+  // Enfoque opcional: pilares de contenido a priorizar.
+  const focusPillars = Array.isArray(req.body.pillars)
+    ? req.body.pillars.map((p: any) => String(p)).filter(Boolean).slice(0, 7)
+    : [];
+
   const groq = groqClient();
   if (!groq) {
     return res.status(400).json({ error: 'GROQ_API_KEY no configurada. Agrégala a tu archivo .env.' });
@@ -179,7 +184,9 @@ router.post('/content-ideas', authMiddleware, async (req: AuthRequest, res) => {
   const userPrompt = `${storeContext ? storeContext + '\n\n' : ''}Genera exactamente ${count} ideas de contenido para redes sociales de esta tienda de motos.
 Redes disponibles (usa solo estas): ${networks.join(', ')}.
 ${goal ? `Objetivo de la campaña: ${goal}.` : ''}
-Varía los pilares de contenido: educativo, venta, testimonio/prueba social, oferta, evento/rodada, mantenimiento/tips, detrás de cámaras.
+${focusPillars.length
+  ? `Enfócate principalmente en estos pilares de contenido: ${focusPillars.join(', ')} (complementa con otros solo si hace falta para variar).`
+  : 'Varía los pilares de contenido: educativo, venta, testimonio/prueba social, oferta, evento/rodada, mantenimiento/tips, detrás de cámaras.'}
 Para cada idea define el formato según la red: REEL, STORY, POST o SHORT.
 Devuelve estrictamente este JSON:
 {"ideas":[{"pillar":"...","topic":"...","network":"UNA de las redes dadas","format":"REEL|STORY|POST|SHORT","hook":"gancho corto","cta":"llamado a la acción"}]}`;
@@ -305,8 +312,9 @@ ${idea.hook ? `Gancho: ${idea.hook}.` : ''}
 ${idea.cta ? `Llamado a la acción: ${idea.cta}.` : ''}
 ${FORMAT_GUIDE[format] || ''}
 Incluye 5 hashtags relevantes (mezcla generales y locales si aplica).
+Genera también "productionBrief": una guía PRÁCTICA de qué hacer para producir esta publicación, adaptada al formato ${format}. Si es video (REEL/SHORT/STORY): 3-5 pasos/tomas concretas para grabar (qué mostrar, tipo de plano, texto en pantalla, duración aprox.). Si es POST/imagen: describe la foto ideal (qué se ve, encuadre, ambiente, elementos). Frases cortas, una por línea, en español, accionables para alguien sin experiencia.
 Además sugiere la imagen de DOS formas: "photoIdea" = qué FOTO REAL tomar (si es una moto concreta, recomienda fotografiar la unidad real); "aiImagePrompt" = prompt en INGLÉS listo para un generador de imágenes IA (ideal para banners, promos o lifestyle).
-Devuelve estrictamente este JSON: {"content": "texto de la publicación", "hashtags": "#moto ...", "title": "título corto", "photoIdea": "...", "aiImagePrompt": "..."}`;
+Devuelve estrictamente este JSON: {"content": "texto de la publicación", "hashtags": "#moto ...", "title": "título corto", "productionBrief": "paso 1\\npaso 2\\n...", "photoIdea": "...", "aiImagePrompt": "..."}`;
 
   try {
     const completion = await groq.chat.completions.create({
@@ -337,6 +345,7 @@ Devuelve estrictamente este JSON: {"content": "texto de la publicación", "hasht
       content: parsed.content,
       hashtags: typeof parsed.hashtags === 'string' ? parsed.hashtags : '',
       title: typeof parsed.title === 'string' ? parsed.title : '',
+      productionBrief: typeof parsed.productionBrief === 'string' ? parsed.productionBrief : '',
       photoIdea: typeof parsed.photoIdea === 'string' ? parsed.photoIdea : '',
       aiImagePrompt: typeof parsed.aiImagePrompt === 'string' ? parsed.aiImagePrompt : '',
     });

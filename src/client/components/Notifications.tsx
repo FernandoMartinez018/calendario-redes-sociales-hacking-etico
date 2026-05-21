@@ -36,8 +36,19 @@ export default function Notifications({ setActiveTab }: Props) {
             new Date(p.scheduledAt).getTime() - now > 0 &&
             new Date(p.scheduledAt).getTime() - now < 86400000
         ).length;
+        const duePublish = posts.filter(
+          (p) =>
+            p.status === 'SCHEDULED' &&
+            p.scheduledAt &&
+            new Date(p.scheduledAt).getTime() <= now
+        ).length;
 
         const list: { label: string; tab: string }[] = [];
+        if (duePublish)
+          list.push({
+            label: `${duePublish} lista(s) para publicar — ya pasó su hora, publícala y márcala como publicada`,
+            tab: 'posts',
+          });
         if (soon)
           list.push({ label: `${soon} publicación(es) programadas en las próximas 24 h`, tab: 'calendar' });
         if (noMetrics)

@@ -307,6 +307,11 @@ export default function AIGenerator() {
                   Agendar al calendario
                 </button>
               </div>
+
+              <p className="text-[11px] text-zinc-500 leading-relaxed pt-1">
+                💡 Se guarda en tu <b className="text-zinc-300">calendario</b>. MotoSocial no publica por ti:
+                cuando llegue la hora te avisamos para que la publiques en la red y pegues el enlace para medir.
+              </p>
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-30 px-10 py-16">

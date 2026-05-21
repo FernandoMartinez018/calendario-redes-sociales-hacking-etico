@@ -21,7 +21,7 @@ const TAB_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   calendar: 'Calendario',
   posts: 'Publicaciones',
-  assistant: 'Asistente IA',
+  assistant: 'Plan de contenido',
   ai: 'Post rápido',
   seo: 'Slogans & SEO',
   media: 'Multimedia',
@@ -108,8 +108,8 @@ function AppContent() {
           </p>
         </div>
         <div className="flex gap-4">
-          <button 
-            onClick={() => setIsPostModalOpen(true)}
+          <button
+            onClick={() => setActiveTab('ai')}
             className="group relative flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-xl shadow-orange-900/20 hover:scale-[1.02] active:scale-[0.98]"
           >
             <PlusCircle size={20} className="group-hover:rotate-90 transition-transform duration-300" />

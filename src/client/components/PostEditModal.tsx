@@ -147,7 +147,7 @@ export default function PostEditModal({ post, onClose, onSaved }: Props) {
           </div>
 
           <div>
-            <label className={lbl}>URL de la publicación{published ? ' (editable para sincronizar métricas)' : ''}</label>
+            <label className={lbl}>Enlace a la publicación ya posteada</label>
             <input
               type="url"
               value={postUrl}
@@ -155,6 +155,9 @@ export default function PostEditModal({ post, onClose, onSaved }: Props) {
               placeholder="https://www.youtube.com/watch?v=..."
               className={inp}
             />
+            <p className="mt-1.5 text-[11px] text-zinc-500 leading-relaxed">
+              Publica tú en la red y pega aquí el enlace para traer y medir sus métricas.
+            </p>
           </div>
 
           {!published ? (

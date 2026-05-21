@@ -224,7 +224,7 @@ export default function Dashboard() {
               <div className="py-16 text-center">
                 <p className="text-zinc-400 font-bold text-sm">No hay publicaciones programadas</p>
                 <p className="text-zinc-600 text-xs mt-1">
-                  Usa el Asistente IA o Post rápido para llenar tu calendario.
+                  Usa el Plan de contenido o Post rápido para llenar tu calendario.
                 </p>
               </div>
             ) : (

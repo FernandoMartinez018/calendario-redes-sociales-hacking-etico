@@ -11,6 +11,9 @@ import {
   ExternalLink,
   Heart,
   Eye,
+  MessageCircle,
+  Share2,
+  TrendingUp,
   Download,
   Upload,
   Youtube as YoutubeIcon,
@@ -75,6 +78,7 @@ export default function PostsView() {
   const [saving, setSaving] = useState(false);
 
   const [metricsByPost, setMetricsByPost] = useState<Record<string, any>>({});
+  const [historyByPost, setHistoryByPost] = useState<Record<string, any[]>>({});
   const [metricsFor, setMetricsFor] = useState<any>(null);
   const [mLikes, setMLikes] = useState('');
   const [mComments, setMComments] = useState('');
@@ -84,6 +88,10 @@ export default function PostsView() {
   const [netFilter, setNetFilter] = useState('ALL');
   const [order, setOrder] = useState('recent');
 
+  const [publishFor, setPublishFor] = useState<any>(null);
+  const [publishUrl, setPublishUrl] = useState('');
+  const [publishing, setPublishing] = useState(false);
+
   const fetchPosts = async () => {
     try {
       const [pRes, mRes] = await Promise.all([
@@ -92,15 +100,46 @@ export default function PostsView() {
       ]);
       setPosts(Array.isArray(pRes.data) ? pRes.data : []);
       const map: Record<string, any> = {};
+      const hist: Record<string, any[]> = {};
       for (const h of mRes.data?.history || []) {
         // history viene ordenada desc por fecha → la primera por post es la más reciente.
         if (!map[h.snapshot.postId]) map[h.snapshot.postId] = h.snapshot;
+        if (!hist[h.snapshot.postId]) hist[h.snapshot.postId] = [];
+        hist[h.snapshot.postId].push(h.snapshot);
       }
       setMetricsByPost(map);
+      setHistoryByPost(hist);
     } catch {
       setPosts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openPublish = (p: any) => {
+    setPublishFor(p);
+    setPublishUrl(p.postUrl || '');
+  };
+
+  const markPublished = async () => {
+    if (!publishUrl.trim()) {
+      alert('Pega el enlace de la publicación para marcarla como publicada.');
+      return;
+    }
+    setPublishing(true);
+    try {
+      await api.patch(`/api/posts/${publishFor.id}`, {
+        status: 'PUBLISHED',
+        postUrl: publishUrl.trim(),
+        publishedAt: new Date().toISOString(),
+      });
+      setPublishFor(null);
+      setPublishUrl('');
+      await fetchPosts();
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'No se pudo marcar como publicada.');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -381,7 +420,7 @@ export default function PostsView() {
       {filtered.length === 0 ? (
         <div className="py-20 text-center border border-zinc-800 border-dashed rounded-3xl">
           <p className="text-zinc-400 font-bold">No hay publicaciones aquí</p>
-          <p className="text-zinc-600 text-xs mt-1">Genera contenido en el Asistente IA o Post rápido.</p>
+          <p className="text-zinc-600 text-xs mt-1">Genera contenido en el Plan de contenido o Post rápido.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -425,6 +464,13 @@ export default function PostsView() {
                         ? format(new Date(p.scheduledAt), "d MMM yyyy · HH:mm", { locale: es })
                         : 'sin fecha'}
                     </span>
+                    {p.status === 'SCHEDULED' &&
+                      p.scheduledAt &&
+                      new Date(p.scheduledAt).getTime() <= Date.now() && (
+                        <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">
+                          ⏰ toca publicar
+                        </span>
+                      )}
                   </div>
                   <p className="text-xs text-zinc-300 truncate">{p.copy}</p>
                 </div>
@@ -455,22 +501,22 @@ export default function PostsView() {
                     <ExternalLink size={15} />
                   </a>
                 )}
-                {p.status === 'PUBLISHED' && /youtu\.?be/.test(p.postUrl || '') && (
-                  <button
-                    onClick={() => syncYoutube(p)}
-                    title="Sincronizar métricas reales desde YouTube"
-                    className="p-2 rounded-lg text-zinc-600 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                  >
-                    <YoutubeIcon size={16} />
-                  </button>
-                )}
                 {p.status === 'PUBLISHED' && (
                   <button
                     onClick={() => openMetrics(p)}
-                    title="Registrar / ver métricas"
+                    title="Ver / registrar métricas"
                     className="p-2 rounded-lg text-zinc-600 hover:text-orange-500 hover:bg-orange-500/10 transition-colors"
                   >
                     <BarChart3 size={16} />
+                  </button>
+                )}
+                {(p.status === 'DRAFT' || p.status === 'SCHEDULED') && (
+                  <button
+                    onClick={() => openPublish(p)}
+                    title="Marcar como publicada"
+                    className="p-2 rounded-lg text-zinc-600 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                  >
+                    <CheckCircle2 size={16} />
                   </button>
                 )}
                 {p.status !== 'PUBLISHED' && (
@@ -558,7 +604,7 @@ export default function PostsView() {
 
               <div>
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block">
-                  URL de la publicación (cuando ya esté posteada)
+                  Enlace a la publicación ya posteada
                 </label>
                 <input
                   type="url"
@@ -567,6 +613,9 @@ export default function PostsView() {
                   placeholder="https://instagram.com/p/..."
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-300 focus:outline-none focus:border-orange-500"
                 />
+                <p className="mt-1.5 text-[11px] text-zinc-500 leading-relaxed">
+                  MotoSocial no publica por ti: publica en la red y pega aquí el enlace para traer y medir sus métricas.
+                </p>
               </div>
 
               <MediaPicker value={mediaUrl} onChange={setMediaUrl} />
@@ -597,12 +646,27 @@ export default function PostsView() {
         </div>
       )}
 
-      {metricsFor && (
+      {metricsFor && (() => {
+        const current = metricsByPost[metricsFor.id];
+        const history = historyByPost[metricsFor.id] || [];
+        const views = Number(mViews) || 0;
+        const liveEng =
+          views > 0
+            ? ((((Number(mLikes) || 0) + (Number(mComments) || 0) + (Number(mShares) || 0)) / views) * 100).toFixed(2)
+            : '0.00';
+        const isYoutube = /youtu\.?be/.test(metricsFor.postUrl || '');
+        const cards = [
+          { l: 'Likes', v: current?.likes, icon: <Heart size={14} className="text-rose-500" /> },
+          { l: 'Comentarios', v: current?.comments, icon: <MessageCircle size={14} className="text-sky-400" /> },
+          { l: 'Compartidos', v: current?.shares, icon: <Share2 size={14} className="text-emerald-400" /> },
+          { l: 'Vistas', v: current?.views, icon: <Eye size={14} className="text-blue-400" /> },
+        ];
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-zinc-800">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <BarChart3 size={18} className="text-orange-500" /> Registrar métricas
+                <BarChart3 size={18} className="text-orange-500" /> Métricas de la publicación
               </h2>
               <button
                 onClick={() => setMetricsFor(null)}
@@ -611,39 +675,127 @@ export default function PostsView() {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-[11px] text-zinc-500 truncate">{metricsFor.copy}</p>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { l: 'Likes', v: mLikes, s: setMLikes },
-                  { l: 'Comentarios', v: mComments, s: setMComments },
-                  { l: 'Compartidos', v: mShares, s: setMShares },
-                  { l: 'Vistas', v: mViews, s: setMViews },
-                ].map((f) => (
-                  <div key={f.l}>
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block">
-                      {f.l}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={f.v}
-                      onChange={(e) => f.s(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500"
-                    />
+
+            <div className="p-6 space-y-5 overflow-y-auto">
+              <p className="text-[11px] text-zinc-500 line-clamp-2">{metricsFor.copy}</p>
+
+              {/* Estado actual */}
+              {current ? (
+                <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Estado actual</span>
+                    <span className="text-[10px] text-zinc-600">
+                      actualizado {format(new Date(current.recordedAt), "d MMM · HH:mm", { locale: es })}
+                    </span>
                   </div>
-                ))}
+                  <div className="grid grid-cols-4 gap-2">
+                    {cards.map((c) => (
+                      <div key={c.l} className="text-center">
+                        <div className="flex items-center justify-center mb-1">{c.icon}</div>
+                        <p className="text-base font-black text-white tabular-nums">{Number(c.v || 0).toLocaleString()}</p>
+                        <p className="text-[9px] uppercase tracking-widest text-zinc-600">{c.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-3 border-t border-zinc-800">
+                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">Engagement</span>
+                    <span className="text-xl font-black text-orange-500 tabular-nums">{current.engagement}%</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-zinc-950 border border-dashed border-zinc-800 rounded-2xl p-4 text-center text-[11px] text-zinc-500">
+                  Aún no has registrado métricas para esta publicación. Ingrésalas abajo 👇
+                </div>
+              )}
+
+              {/* Sincronizar YouTube */}
+              {isYoutube && (
+                <button
+                  onClick={() => syncYoutube(metricsFor)}
+                  className="w-full py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <YoutubeIcon size={15} /> Traer métricas reales desde YouTube
+                </button>
+              )}
+
+              {/* Evolución */}
+              {history.length > 1 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp size={13} className="text-orange-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                      Evolución ({history.length} registros)
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {history.slice(0, 5).map((s, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-[11px] bg-zinc-950/60 border border-zinc-800 rounded-lg px-3 py-1.5"
+                      >
+                        <span className="text-zinc-500 tabular-nums">
+                          {format(new Date(s.recordedAt), "d MMM · HH:mm", { locale: es })}
+                        </span>
+                        <span className="flex items-center gap-3 text-zinc-400 tabular-nums">
+                          <span className="flex items-center gap-1">
+                            <Eye size={11} className="text-blue-400" />
+                            {Number(s.views).toLocaleString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Heart size={11} className="text-rose-500" />
+                            {Number(s.likes).toLocaleString()}
+                          </span>
+                          <span className="text-orange-500 font-bold">{s.engagement}%</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Registrar nuevo dato */}
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-3 block">
+                  {current ? 'Actualizar / registrar nuevo dato' : 'Registrar métricas'}
+                </span>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { l: 'Likes', v: mLikes, s: setMLikes },
+                    { l: 'Comentarios', v: mComments, s: setMComments },
+                    { l: 'Compartidos', v: mShares, s: setMShares },
+                    { l: 'Vistas', v: mViews, s: setMViews },
+                  ].map((f) => (
+                    <div key={f.l}>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block">
+                        {f.l}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={f.v}
+                        onChange={(e) => f.s(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between mt-3 px-1 gap-3">
+                  <span className="text-[10px] text-zinc-600 italic">
+                    Engagement = (likes + comentarios + compartidos) / vistas
+                  </span>
+                  <span className="text-[11px] font-bold text-zinc-400 whitespace-nowrap">
+                    ≈ <span className="text-orange-500">{liveEng}%</span>
+                  </span>
+                </div>
               </div>
-              <p className="text-[10px] text-zinc-600 italic">
-                El engagement se calcula solo: (likes + comentarios + compartidos) / vistas.
-              </p>
             </div>
+
             <div className="p-5 border-t border-zinc-800 flex gap-3">
               <button
                 onClick={() => setMetricsFor(null)}
                 className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-colors"
               >
-                Cancelar
+                Cerrar
               </button>
               <button
                 onClick={saveMetrics}
@@ -652,6 +804,64 @@ export default function PostsView() {
               >
                 {savingMetrics ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Guardar
                 métricas
+              </button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* Marcar como publicada */}
+      {publishFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-800">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-emerald-500" /> Marcar como publicada
+              </h2>
+              <button
+                onClick={() => setPublishFor(null)}
+                className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-[11px] text-zinc-500 line-clamp-2">{publishFor.copy}</p>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-[11px] text-zinc-400 leading-relaxed">
+                Primero publica este contenido en{' '}
+                <b className="text-zinc-200">{publishFor.platform || 'la red'}</b>. Luego pega aquí el
+                enlace de la publicación — es <b className="text-zinc-200">obligatorio</b> para poder medir
+                sus métricas.
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block">
+                  Enlace de la publicación *
+                </label>
+                <input
+                  type="url"
+                  value={publishUrl}
+                  onChange={(e) => setPublishUrl(e.target.value)}
+                  placeholder="https://instagram.com/p/..."
+                  autoFocus
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t border-zinc-800 flex gap-3">
+              <button
+                onClick={() => setPublishFor(null)}
+                className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={markPublished}
+                disabled={publishing || !publishUrl.trim()}
+                className="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {publishing ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}{' '}
+                Confirmar publicación
               </button>
             </div>
           </div>
