@@ -66,28 +66,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Login con Google (Firebase): el front autentica con Google y nos manda el
+// email/nombre/foto. Aquí NO creamos cuentas: solo dejamos entrar a quien YA
+// está registrado. Si el email no existe, lo bloqueamos.
 router.post('/supabase-sync', async (req, res) => {
   try {
-    const { email, name, picture } = req.body;
+    const { email, picture } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    // Check if user exists
-    let [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+    // Bloqueo: solo cuentas registradas. No auto-creamos desde Google.
     if (!user) {
-      // Create user if doesn't exist
-      [user] = await db.insert(users).values({
-        email,
-        name: name || 'User',
-        password: await bcrypt.hash(Math.random().toString(36), 10),
-        dealerName: 'Nuevo Concesionario',
-      }).returning();
+      return res.status(403).json({
+        error: 'Esta cuenta de Google no está registrada. Primero crea tu cuenta con email y contraseña.',
+      });
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, dealerName: user.dealerName, logoUrl: picture } });
   } catch (error) {
-    console.error('Supabase Sync Error:', error);
+    console.error('Google Sign-in Error:', error);
     res.status(500).json({ error: 'Authentication sync failed' });
   }
 });

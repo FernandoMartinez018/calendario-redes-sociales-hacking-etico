@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api.js';
 import { LogIn, UserPlus, Bike, ArrowRight, KeyRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.tsx';
-import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
+import { signInWithGoogle, signOutGoogle, isFirebaseConfigured } from '../lib/firebase.js';
 import { sendResetEmailJS, sendWelcomeEmailJS } from '../lib/emailjs.js';
 
 export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) {
@@ -22,41 +22,28 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
     if (t) setResetToken(t);
   }, []);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      if (!supabase) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) handleSupabaseUser(session.user);
-    };
-    checkSession();
-  }, []);
-
-  const handleSupabaseUser = async (user: any) => {
+  const handleGoogleLogin = async () => {
+    if (!isFirebaseConfigured) {
+      alert('El login con Google no está configurado (falta pegar la firebaseConfig en src/client/lib/firebase.ts).');
+      return;
+    }
     try {
       setLoading(true);
-      const { data } = await api.post('/api/auth/supabase-sync', {
-        email: user.email,
-        name: user.user_metadata?.full_name || user.email?.split('@')[0],
-        picture: user.user_metadata?.avatar_url,
-      });
+      const profile = await signInWithGoogle();
+      const { data } = await api.post('/api/auth/supabase-sync', profile);
       login(data.token, data.user);
       onLogin(data.user);
-    } catch (err) {
-      console.error('Error syncing Supabase user:', err);
+    } catch (err: any) {
+      // El usuario cerró el popup → no es un error que mostrar.
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
+      // El backend rechazó (cuenta no registrada u otro): cerramos la sesión de
+      // Firebase para no dejarla colgada y mostramos el mensaje del servidor.
+      await signOutGoogle().catch(() => {});
+      const msg = err?.response?.data?.error || 'No se pudo iniciar sesión con Google.';
+      alert(msg);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!supabase) {
-      alert('El login con Google no está configurado (faltan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).');
-      return;
-    }
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
   };
 
   const backToLogin = () => {
@@ -127,7 +114,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
   const showRegisterFields = !isLogin && !isForgot && !resetToken;
   const showEmail = !resetToken;
   const showPassword = !isForgot;
-  const showGoogle = isSupabaseConfigured && !isForgot && !resetToken;
+  const showGoogle = isFirebaseConfigured && !isForgot && !resetToken;
 
   return (
     <div className="min-h-screen bg-zinc-950 flex font-sans selection:bg-orange-500/30 text-white">
@@ -187,7 +174,7 @@ export default function AuthView({ onLogin }: { onLogin: (user: any) => void }) 
 
             {showEmail && (
               <div>
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Email Institucional</label>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Email </label>
                 <input
                   type="email"
                   value={email}

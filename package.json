@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@firebase/app": "^0.14.12",
+    "@firebase/auth": "^1.13.1",
     "@fontsource-variable/geist": "^5.2.8",
     "@supabase/supabase-js": "^2.106.0",
     "@tailwindcss/vite": "^4.1.14",
