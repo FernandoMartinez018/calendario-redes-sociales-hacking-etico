@@ -27,6 +27,7 @@ async function startServer() {
   // Security Middlewares
   app.use(helmet({
     contentSecurityPolicy: false, // Vite handles this in dev
+    frameguard: false, // permite embeber la app en un <iframe> (quita X-Frame-Options)
   }));
   app.use(cors());
   app.use(express.json());
