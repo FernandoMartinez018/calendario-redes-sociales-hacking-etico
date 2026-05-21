@@ -8,4 +8,10 @@ coverage/
 !.env.example
 .claude
 
+# SECRETO: service account / private_key de Firebase. El login NO la usa.
+# NO subir nunca a un repo público.
+firebase.json
+*serviceAccount*.json
+*-adminsdk-*.json
+
 ROADMAP.md

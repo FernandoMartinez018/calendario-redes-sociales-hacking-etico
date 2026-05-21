@@ -28,6 +28,10 @@ async function startServer() {
   app.use(helmet({
     contentSecurityPolicy: false, // Vite handles this in dev
     frameguard: false, // permite embeber la app en un <iframe> (quita X-Frame-Options)
+    // El popup de Google (signInWithPopup) necesita comunicarse con la app que lo
+    // abrió. El COOP por defecto de helmet ('same-origin') lo bloquea y el popup
+    // se cierra solo sin mensaje. 'same-origin-allow-popups' lo permite.
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   }));
   app.use(cors());
   app.use(express.json());
